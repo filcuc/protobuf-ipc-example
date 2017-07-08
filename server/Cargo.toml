@@ -1,0 +1,11 @@
+[package]
+name = "server"
+version = "0.1.0"
+authors = ["Filippo Cucchetto <filippocucchetto@gmail.com>"]
+build = "build.rs"
+
+[dependencies]
+protobuf = "1.4.1"
+
+[build-dependencies]
+protoc-rust = "1.4.1"

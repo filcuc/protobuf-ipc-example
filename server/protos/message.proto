@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+message Message {
+  enum Type {
+    INVALID = 0;
+    GET_EVENTS_REQUEST = 1;
+    SET_EVENTS_REPLY = 2;
+  }
+
+  Type type = 1;
+  GetEventRequest getEventRequest = 2;
+  GetEventReply getEventReply = 3;
+}
+
+message GetEventRequest {
+}
+
+message GetEventReply {
+}
