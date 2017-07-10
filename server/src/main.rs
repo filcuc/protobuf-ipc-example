@@ -1,9 +1,9 @@
 extern crate protobuf;
 mod protos;
 
-use std::io::Read;
+use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
-use protos::message::{Message};
+use protos::message::{Message, Message_Type, GetEventRequest, GetEventReply};
 
 type Result = std::result::Result<(), Error>;
 
@@ -41,10 +41,18 @@ fn decode_u32(buffer: &[u8]) -> std::result::Result<u32, Error> {
     Ok(result)
 }
 
-fn on_message_received(message: Vec<u8>) {
+fn on_get_events_request(stream: &mut TcpStream, request: &GetEventRequest) {
+    let mut message = Message::new();
+    message.set_getEventReply(GetEventReply::new());
+}
+
+fn on_message_received(stream: &mut TcpStream, message: Vec<u8>) {
     let data: &[u8] = &message;
     if let Ok(message) = protobuf::parse_from_bytes::<Message>(data) {
-        println!("Message {:?}", message);
+        match message.get_field_type() {
+            Message_Type::GET_EVENTS_REQUEST => on_get_events_request(stream, message.get_getEventRequest()),
+            _ => ()
+        }
     }
 }
 
@@ -70,7 +78,7 @@ fn handle_client(mut stream: TcpStream) -> Result {
             stream.read_exact(slice)?;
             message.extend_from_slice(slice);
         }
-        on_message_received(message);
+        on_message_received(&mut stream, message);
     }
 }
 

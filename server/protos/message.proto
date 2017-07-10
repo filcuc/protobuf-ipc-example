@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package protobuf_client_example.protocol;
+
 message Message {
   enum Type {
     INVALID = 0;
