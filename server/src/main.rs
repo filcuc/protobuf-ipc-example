@@ -43,48 +43,64 @@ fn decode_u32(buffer: &[u8]) -> Result<u32, Error> {
     Ok(result)
 }
 
-fn on_get_events_request(stream: &mut TcpStream, request: &GetEventRequest) {
-    let mut message = Message::new();
-    message.set_getEventReply(GetEventReply::new());
+struct Client {
+    stream: TcpStream,
+    buffer: [u8; 512],
 }
 
-fn on_message_received(stream: &mut TcpStream, message: Message) {
-    match message.get_field_type() {
-        Message_Type::GET_EVENTS_REQUEST => on_get_events_request(stream, message.get_getEventRequest()),
-        _ => ()
+impl Client {
+    fn new(mut stream: TcpStream) -> Client {
+        Client {
+            stream: stream,
+            buffer: [0; 512]
+        }
     }
-}
 
-fn receive_message(buffer: &mut[u8], stream: &mut TcpStream) -> Result<Message, Error> {
-    const EXPECTED_MAGIC_NUMBER: u32 = 12345;
-
-    stream.read_exact(&mut buffer[0..4])?;
-    let magic_number = decode_u32(&buffer[0..4])?;
-    if magic_number != EXPECTED_MAGIC_NUMBER {
-        return Err(Error::MagicNumberMismatch);
-    };
-
-    stream.read_exact(&mut buffer[0..4])?;
-    let size = decode_u32(&buffer[0..4])? as usize;
-
-    let mut message: Vec<u8> = Vec::new();
-    message.reserve(size);
-    while message.len() < size {
-        let num_to_read = std::cmp::min(buffer.len(), size - message.len());
-        let (slice, _) = buffer.split_at_mut(num_to_read);
-        stream.read_exact(slice)?;
-        message.extend_from_slice(slice);
+    fn exec(&mut self) {
+        loop {
+            match self.receive_message() {
+                Ok(message) => self.on_message_received(message),
+                Err(Error::ProtobufError(_)) => (),
+                Err(_) => break
+            }
+        }
     }
-    let message = protobuf::parse_from_bytes::<Message>(&message)?;
-    Ok(message)
-}
 
-fn handle_client(mut stream: TcpStream) -> Result<(), Error> {
-    const BUFFER_SIZE: usize = 512;
-    let mut buffer: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
-    loop {
-        let message = receive_message(&mut buffer, &mut stream)?;
-        on_message_received(&mut stream, message);
+    fn receive_message(&mut self) -> Result<Message, Error> {
+        const EXPECTED_MAGIC_NUMBER: u32 = 12345;
+
+        self.stream.read_exact(&mut self.buffer[0..4])?;
+        let magic_number = decode_u32(&self.buffer[0..4])?;
+        if magic_number != EXPECTED_MAGIC_NUMBER {
+            return Err(Error::MagicNumberMismatch);
+        };
+
+        self.stream.read_exact(&mut self.buffer[0..4])?;
+        let size = decode_u32(&self.buffer[0..4])? as usize;
+
+        let mut message: Vec<u8> = Vec::new();
+        message.reserve(size);
+        while message.len() < size {
+            let num_to_read = std::cmp::min(self.buffer.len(), size - message.len());
+            let (slice, _) = self.buffer.split_at_mut(num_to_read);
+            self.stream.read_exact(slice)?;
+            message.extend_from_slice(slice);
+        }
+        let message = protobuf::parse_from_bytes::<Message>(&message)?;
+        Ok(message)
+    }
+
+    fn on_message_received(&mut self, message: Message) {
+        match message.get_field_type() {
+            Message_Type::GET_EVENTS_REQUEST => self.on_get_events_request(message.get_getEventRequest()),
+            _ => ()
+        }
+    }
+
+    fn on_get_events_request(&self, request: &GetEventRequest) {
+        println!("GetEventsRequest");
+        let mut message = Message::new();
+        message.set_getEventReply(GetEventReply::new());
     }
 }
 
@@ -96,9 +112,7 @@ fn main() {
             Ok(stream) => {
                 println!("A client connected");
                 let thread = std::thread::spawn(move || {
-                    if let Err(e) =  handle_client(stream) {
-                        println!("Client failed with error {:?}", e);
-                    }
+                    Client::new(stream).exec();
                 });
                 threads.push(thread);
             },
