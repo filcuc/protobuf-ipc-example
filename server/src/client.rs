@@ -40,6 +40,8 @@ fn decode_u32(buffer: &[u8]) -> Result<u32, Error> {
     Ok(result)
 }
 
+const EXPECTED_MAGIC_NUMBER: u32 = 12345;
+
 pub struct Client {
     stream: net::TcpStream,
     buffer: [u8; 512],
@@ -64,7 +66,6 @@ impl Client {
     }
 
     fn receive_message(&mut self) -> Result<Message, Error> {
-        const EXPECTED_MAGIC_NUMBER: u32 = 12345;
 
         self.stream.read_exact(&mut self.buffer[0..4])?;
         let magic_number = decode_u32(&self.buffer[0..4])?;
