@@ -15,12 +15,24 @@ namespace protobuf_client_example {
       ptr[2] = static_cast<char>((data & 0x0000FF00) >> 8); 
       ptr[3] = static_cast<char>((data & 0x000000FF));
     }
+
+    uint32_t decode(char* ptr) {
+        uint32_t data = static_cast<uint32_t>(ptr[0]);
+        data = data << 8;
+        data += static_cast<uint32_t>(ptr[1]);
+        data = data << 8;
+        data += static_cast<uint32_t>(ptr[2]);
+        data = data << 8;
+        data += static_cast<uint32_t>(ptr[3]);
+        return data;
+    }
   }
 
   Application::Application() {
     sendBuffer.resize(1024);
     QObject::connect(&socket, &QTcpSocket::connected, this, &Application::onConnected);
     QObject::connect(&socket, &QTcpSocket::disconnected, this, &Application::onDisconnected);
+    QObject::connect(&socket, &QTcpSocket::readyRead, this, &Application::onReadyRead);
   }
 
   void Application::start(const QString &url, int port) {
@@ -41,6 +53,22 @@ namespace protobuf_client_example {
     qApp->quit();
   }
 
+  void Application::onReadyRead()
+  {
+      QByteArray data = socket.readAll();
+      if (data.size() < 4)
+          return;
+      uint32_t magic_number = decode(data.data());
+      if (data.size() < 8)
+          return;
+      uint32_t message_size = decode(data.data() + 4);
+      if (data.size() < (8 + message_size))
+          return;
+      protocol::Message message;
+      message.ParseFromArray(data.data() + 8, message_size);
+      onMessageReceived(message);
+  }
+
   void Application::send(const protocol::Message &message) {
     const int message_size = 2 * sizeof(uint32_t) + message.ByteSize();
     sendBuffer.resize(message_size);
@@ -51,5 +79,17 @@ namespace protobuf_client_example {
       qDebug() << "Sending a message through the socket";
       socket.write(sendBuffer.data(), sendBuffer.size());
     }
+  }
+
+  void Application::onMessageReceived(const protocol::Message &message)
+  {
+      switch (message.type())
+      {
+      case protocol::Message_Type_SET_EVENTS_REPLY:
+          qDebug() << "GetEventsReply received";
+          break;
+      default:
+          qDebug() << "Unknown message received";
+      }
   }
 }

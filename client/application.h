@@ -21,7 +21,9 @@ namespace protobuf_client_example {
   private:
     void onConnected();
     void onDisconnected();
+    void onReadyRead();
     void send(const protocol::Message &message);
+    void onMessageReceived(const protocol::Message &message);
 
     QTcpSocket socket;
     std::vector<char> sendBuffer;
