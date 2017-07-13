@@ -1,7 +1,10 @@
 use protos::message::{Message, Message_Type, GetEventRequest, GetEventReply};
 use std::{io, cmp, net};
-use std::io::Read;
+use std::io::{Read, Write};
 use protobuf;
+use protobuf::Message as ProtoBufMessage;
+
+const EXPECTED_MAGIC_NUMBER: u32 = 12345;
 
 #[derive(Debug)]
 enum Error {
@@ -40,8 +43,6 @@ fn decode_u32(buffer: &[u8]) -> Result<u32, Error> {
     Ok(result)
 }
 
-const EXPECTED_MAGIC_NUMBER: u32 = 12345;
-
 pub struct Client {
     stream: net::TcpStream,
     buffer: [u8; 512],
@@ -66,7 +67,6 @@ impl Client {
     }
 
     fn receive_message(&mut self) -> Result<Message, Error> {
-
         self.stream.read_exact(&mut self.buffer[0..4])?;
         let magic_number = decode_u32(&self.buffer[0..4])?;
         if magic_number != EXPECTED_MAGIC_NUMBER {
@@ -95,9 +95,26 @@ impl Client {
         }
     }
 
-    fn on_get_events_request(&self, request: &GetEventRequest) {
-        println!("GetEventsRequest");
-        let mut message = Message::new();
-        message.set_getEventReply(GetEventReply::new());
+    fn on_get_events_request(&mut self, request: &GetEventRequest) {
+        println!("GetEventsRequest {:?}", request);
+        let mut reply = Message::new();
+        reply.set_field_type(Message_Type::SET_EVENTS_REPLY);
+        reply.set_getEventReply(GetEventReply::new());
+        self.send_message(&reply);
+    }
+
+    fn send_message(&mut self, message: &Message) {
+        let size: u32 = message.compute_size();
+        let mut buffer: Vec<u8> = Vec::new();
+        buffer.resize(8, 0);
+        // Encode magic number
+        encode_u32(EXPECTED_MAGIC_NUMBER, &mut buffer[0..4]);
+        // Encode message size
+        encode_u32(size, &mut buffer[4..8]);
+        // Encode message
+        let mut bytes = message.write_to_bytes().unwrap();
+        buffer.append(&mut bytes);
+        // Write message
+        self.stream.write_all(&mut buffer).unwrap();
     }
 }

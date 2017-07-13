@@ -10,10 +10,10 @@ use std::net;
 const VERSION: &'static str = "0.0.1";
 
 const USAGE: &'static str = "
-Server
+Server example with protocol buffers
 
 Usage:
-  server [--bind-host=<hostname>] [--bind-port=<port>] run
+  server [--bind-host=<hostname>] [--bind-port=<port>]
   server (--help | -h)
   server --version
 
@@ -34,13 +34,8 @@ fn main() {
         return;
     }
 
-    if !args.get_bool("run") {
-        return;
-    }
-
     let address = args.get_str("--bind-host").to_owned() + ":" + args.get_str("--bind-port");
     println!("Starting server at {}", &address);
-
 
     let mut threads = Vec::new();
     let listener = net::TcpListener::bind(&address).unwrap();
