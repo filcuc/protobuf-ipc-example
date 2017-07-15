@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QObject>
-#include <QTcpSocket>
+#include <QSslSocket>
 
 class QString;
 
@@ -18,6 +18,9 @@ namespace protobuf_client_example {
 
     void start(const QString &url, int port);
 
+  private slots:
+    void onSslErrors();
+
   private:
     void onConnected();
     void onDisconnected();
@@ -25,7 +28,7 @@ namespace protobuf_client_example {
     void send(const protocol::Message &message);
     void onMessageReceived(const protocol::Message &message);
 
-    QTcpSocket socket;
+    QSslSocket socket;
     std::vector<char> sendBuffer;
   };
 } // ns protobuf_client_example

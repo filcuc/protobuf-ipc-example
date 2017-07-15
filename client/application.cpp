@@ -30,14 +30,15 @@ namespace protobuf_client_example {
 
   Application::Application() {
     sendBuffer.resize(1024);
-    QObject::connect(&socket, &QTcpSocket::connected, this, &Application::onConnected);
-    QObject::connect(&socket, &QTcpSocket::disconnected, this, &Application::onDisconnected);
-    QObject::connect(&socket, &QTcpSocket::readyRead, this, &Application::onReadyRead);
+    QObject::connect(&socket, &QSslSocket::encrypted, this, &Application::onConnected);
+    QObject::connect(&socket, &QSslSocket::disconnected, this, &Application::onDisconnected);
+    QObject::connect(&socket, &QSslSocket::readyRead, this, &Application::onReadyRead);
+    QObject::connect(&socket, SIGNAL(sslErrors(QList<QSslError>)), this, SLOT(onSslErrors()));
   }
 
   void Application::start(const QString &url, int port) {
     qDebug() << "Application start";
-    socket.connectToHost(url, port);
+    socket.connectToHostEncrypted(url, port);
   }
 
   void Application::onConnected() {
@@ -50,6 +51,7 @@ namespace protobuf_client_example {
 
   void Application::onDisconnected() {
     qDebug() << "Socket disconnected, closing the application";
+    qDebug() << "Socket error is" << socket.error() << " " << socket.errorString();
     qApp->quit();
   }
 
@@ -91,5 +93,11 @@ namespace protobuf_client_example {
       default:
           qDebug() << "Unknown message received";
       }
+  }
+
+  void Application::onSslErrors()
+  {
+      qDebug() << "Ignoring ssl error";
+      this->socket.ignoreSslErrors();
   }
 }
