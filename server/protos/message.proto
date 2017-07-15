@@ -6,7 +6,7 @@ message Message {
   enum Type {
     INVALID = 0;
     GET_EVENTS_REQUEST = 1;
-    SET_EVENTS_REPLY = 2;
+    GET_EVENTS_REPLY = 2;
   }
 
   Type type = 1;
