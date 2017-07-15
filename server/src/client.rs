@@ -1,3 +1,5 @@
+use native_tls;
+use native_tls::TlsStream;
 use protos::message::{Message, Message_Type, GetEventRequest, GetEventReply};
 use std::{io, cmp, net};
 use std::io::Read;
@@ -50,12 +52,12 @@ fn decode_u32_from_be(buffer: &[u8]) -> Result<u32, Error> {
 }
 
 pub struct Client {
-    stream: net::TcpStream,
+    stream: native_tls::TlsStream<net::TcpStream>,
     buffer: [u8; 512],
 }
 
 impl Client {
-    pub fn new(stream: net::TcpStream) -> Client {
+    pub fn new(stream: native_tls::TlsStream<net::TcpStream>) -> Client {
         Client {
             stream: stream,
             buffer: [0; 512]
