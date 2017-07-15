@@ -1,5 +1,4 @@
 use native_tls;
-use native_tls::TlsStream;
 use protos::message::{Message, Message_Type, GetEventRequest, GetEventReply};
 use std::{io, cmp, net};
 use std::io::Read;

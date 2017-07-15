@@ -1,16 +1,24 @@
 extern crate docopt;
-extern crate protobuf;
+#[macro_use]
+extern crate log;
+extern crate log4rs;
 extern crate native_tls;
+extern crate protobuf;
 
 mod client;
 mod protos;
 
 use client::Client;
 use docopt::Docopt;
+use log::LogLevelFilter;
+use log4rs::append::console::ConsoleAppender;
+use log4rs::append::file::FileAppender;
+use log4rs::encode::pattern::PatternEncoder;
+use log4rs::config::{Appender, Config, Logger, Root};
 use std::{fs, net};
 use std::io::Read;
 use std::sync::Arc;
-use native_tls::{Pkcs12, TlsAcceptor, TlsStream};
+use native_tls::{Pkcs12, TlsAcceptor};
 
 const VERSION: &'static str = "0.0.1";
 
@@ -32,33 +40,61 @@ Options:
 ";
 
 fn main() {
+    let stdout = ConsoleAppender::builder().build();
+    let config = Config::builder()
+        .appender(Appender::builder().build("stdout", Box::new(stdout)))
+        .build(Root::builder().appender("stdout").build(LogLevelFilter::Info))
+        .unwrap();
+    let handle = log4rs::init_config(config).unwrap();
+
     let args = Docopt::new(USAGE)
         .and_then(|d| d.parse())
         .unwrap_or_else(|e| e.exit());
 
     if args.get_bool("--version") {
-        println!("Server {}", VERSION);
+        info!("Server {}", VERSION);
         return;
     }
 
-    let mut file = fs::File::open(args.get_str("--certificate")).unwrap();
+    let cert_file_path = args.get_str("--certificate");
+    let mut file = match fs::File::open(cert_file_path){
+        Ok(f) => f,
+        Err(_) => {
+            error!("Could not open certificate file at {}", cert_file_path);
+            return;
+        }
+    };
+    
     let mut pkcs12 = vec![];
     file.read_to_end(&mut pkcs12).unwrap();
-    let pkcs12 = Pkcs12::from_der(&pkcs12, args.get_str("--password")).unwrap();
+    let pkcs12 = match Pkcs12::from_der(&pkcs12, args.get_str("--password")) {
+        Ok(p) => p,
+        Err(_) => {
+            error!("An error occured opening the certificate");
+            return;
+        }
+    };
     
     let address = args.get_str("--bind-host").to_owned() + ":" + args.get_str("--bind-port");
-    println!("Starting server at {}", &address);
+    info!("Starting server at {}", &address);
 
-    let mut threads = Vec::new();
-    let listener = net::TcpListener::bind(&address).unwrap();
+    let listener = match net::TcpListener::bind(&address) {
+        Ok(l) => l,
+        Err(_) => {
+            error!("Failed to bind server to {}", address);
+            return;
+        }
+    };
+
     let acceptor = TlsAcceptor::builder(pkcs12).unwrap().build().unwrap();
     let acceptor = Arc::new(acceptor);
     
+    let mut threads = Vec::new();
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
                 let acceptor = acceptor.clone();
-                println!("A client connected");
+                info!("A client connected");
                 let thread = std::thread::spawn(move || {
                     let stream = acceptor.accept(stream).unwrap();
                     Client::new(stream).exec();
@@ -66,7 +102,7 @@ fn main() {
                 threads.push(thread);
             },
             Err(e) => {
-                println!("Failed to obtain the socket {:?}", e);
+                warn!("Failed to obtain the socket {:?}", e);
             }
         }
     }
