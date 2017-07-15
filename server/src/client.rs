@@ -94,21 +94,6 @@ impl Client {
         Ok(message)
     }
 
-    fn on_message_received(&mut self, message: Message) {
-        match message.get_field_type() {
-            Message_Type::GET_EVENTS_REQUEST => self.on_get_events_request(message.get_getEventRequest()).unwrap(),
-            _ => ()
-        }
-    }
-
-    fn on_get_events_request(&mut self, request: &GetEventRequest) -> Result<(), Error> {
-        let mut reply = Message::new();
-        reply.set_field_type(Message_Type::GET_EVENTS_REPLY);
-        reply.set_getEventReply(GetEventReply::new());
-        self.send_message(&reply)?;
-        Ok(())
-    }
-
     fn send_message(&mut self, message: &Message) -> Result<(), Error> {
         let mut buffer: [u8; 4] = [0; 4];
         // Wrap stream
@@ -123,6 +108,21 @@ impl Client {
         message.write_to(&mut stream)?;
         // Flush
         stream.flush()?;
+        Ok(())
+    }
+
+    fn on_message_received(&mut self, message: Message) {
+        match message.get_field_type() {
+            Message_Type::GET_EVENTS_REQUEST => self.on_get_events_request(message.get_getEventRequest()).unwrap(),
+            _ => ()
+        }
+    }
+
+    fn on_get_events_request(&mut self, request: &GetEventRequest) -> Result<(), Error> {
+        let mut reply = Message::new();
+        reply.set_field_type(Message_Type::GET_EVENTS_REPLY);
+        reply.set_getEventReply(GetEventReply::new());
+        self.send_message(&reply)?;
         Ok(())
     }
 }
