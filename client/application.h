@@ -22,13 +22,18 @@ namespace protobuf_client_example {
     void onSslErrors();
 
   private:
+    void displayCertificateInformations(const QSslCertificate &certificate);
+    void displayCertificateIssuerInformations(const QSslCertificate &certificate);
+
     void onConnected();
     void onDisconnected();
     void onReadyRead();
     void send(const protocol::Message &message);
     void onMessageReceived(const protocol::Message &message);
 
-    QSslSocket socket;
-    std::vector<char> sendBuffer;
+    int m_port;
+    QString m_hostname;
+    QSslSocket m_socket;
+    std::vector<char> m_sendBuffer;
   };
 } // ns protobuf_client_example
