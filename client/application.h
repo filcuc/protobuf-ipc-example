@@ -19,7 +19,7 @@ namespace protobuf_client_example {
     void start(const QString &url, int port);
 
   private slots:
-    void onSslErrors();
+    void onSslErrors(const QList<QSslError> &errors);
 
   private:
     void displayCertificateInformations(const QSslCertificate &certificate);
@@ -34,6 +34,7 @@ namespace protobuf_client_example {
     int m_port;
     QString m_hostname;
     QSslSocket m_socket;
+    QByteArray m_recvBuffer;
     std::vector<char> m_sendBuffer;
   };
 } // ns protobuf_client_example

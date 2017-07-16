@@ -32,11 +32,12 @@ namespace protobuf_client_example {
   }
 
   Application::Application() {
+    m_recvBuffer.reserve(1024);
     m_sendBuffer.resize(1024);
     QObject::connect(&m_socket, &QSslSocket::encrypted, this, &Application::onConnected);
     QObject::connect(&m_socket, &QSslSocket::disconnected, this, &Application::onDisconnected);
     QObject::connect(&m_socket, &QSslSocket::readyRead, this, &Application::onReadyRead);
-    QObject::connect(&m_socket, SIGNAL(sslErrors(QList<QSslError>)), this, SLOT(onSslErrors()));
+    QObject::connect(&m_socket, static_cast<void(QSslSocket::*)(const QList<QSslError>&)>(&QSslSocket::sslErrors), this, &Application::onSslErrors);
   }
 
   void Application::start(const QString &hostname, int port) {
@@ -65,18 +66,21 @@ namespace protobuf_client_example {
 
   void Application::onReadyRead()
   {
-      QByteArray data = m_socket.readAll();
-      if (data.size() < 4)
-          return;
-      uint32_t magic_number = decodeFromBigEndian(data.data());
-      if (data.size() < 8)
-          return;
-      uint32_t message_size = decodeFromBigEndian(data.data() + 4);
-      if (data.size() < (8 + message_size))
-          return;
-      protocol::Message message;
-      message.ParseFromArray(data.data() + 8, message_size);
-      onMessageReceived(message);
+      m_recvBuffer.append(m_socket.readAll());
+      while (true) {
+          if (m_recvBuffer.size() < 4)
+              return;
+          uint32_t magic_number = decodeFromBigEndian(m_recvBuffer.data());
+          if (m_recvBuffer.size() < 8)
+              return;
+          uint32_t message_size = decodeFromBigEndian(m_recvBuffer.data() + 4);
+          if (m_recvBuffer.size() < (8 + message_size))
+              return;
+          protocol::Message message;
+          message.ParseFromArray(m_recvBuffer.data() + 8, message_size);
+          m_recvBuffer = m_recvBuffer.mid(8 + message_size);
+          onMessageReceived(message);
+      }
   }
 
   void Application::send(const protocol::Message &message) {
@@ -103,9 +107,9 @@ namespace protobuf_client_example {
       }
   }
 
-  void Application::onSslErrors()
+  void Application::onSslErrors(const QList<QSslError> &errors)
   {
-      for (const QSslError &error : m_socket.sslErrors()) {
+      for (const QSslError &error : errors) {
           qInfo("****************************************");
           qInfo("Ssl error connecting to %s:%d", qUtf8Printable(m_hostname), m_port);
           qInfo("Error: %s", qUtf8Printable(error.errorString()));
