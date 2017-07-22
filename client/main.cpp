@@ -1,30 +1,33 @@
-#include <QCoreApplication>
-#include <QCommandLineParser>
+#include "global.h"
 #include "application.h"
 
-int main(int argc, char *argv[]) {
-  QCoreApplication app(argc, argv);
-  app.setApplicationName("Client");
-  app.setApplicationVersion("0.0.1");
+#include <QCoreApplication>
+#include <QCommandLineParser>
 
-  QCommandLineOption portOption {"port", "Connect port", "number", "56323"};
-  QCommandLineOption hostnameOption {"hostname", "Connect hostname", "hostname", "localhost"};
+int main(int argc, char *argv[])
+{
+    QCoreApplication app(argc, argv);
+    app.setApplicationName("Client");
+    app.setApplicationVersion("0.0.1");
 
-  QCommandLineParser parser;
-  parser.addHelpOption();
-  parser.addVersionOption();
-  parser.addOption(portOption);
-  parser.addOption(hostnameOption);
+    QCommandLineOption portOption {"port", "Connect port", "number", "56323"};
+    QCommandLineOption hostnameOption {"hostname", "Connect hostname", "hostname", "localhost"};
 
-  parser.process(app);
+    QCommandLineParser parser;
+    parser.addHelpOption();
+    parser.addVersionOption();
+    parser.addOption(portOption);
+    parser.addOption(hostnameOption);
 
-  const QString hostname = parser.value(hostnameOption);
-  bool ok = false;
-  const int port = parser.value(portOption).toInt(&ok);
-  if (!ok)
-      return -1;
+    parser.process(app);
 
-  protobuf_client_example::Application a;
-  a.start(hostname, port);
-  return app.exec();
+    const QString hostname = parser.value(hostnameOption);
+    bool ok = false;
+    const int port = parser.value(portOption).toInt(&ok);
+    if (!ok)
+        return -1;
+
+    protobuf_client_example::Application a;
+    a.connectToHost(hostname, port);
+    return app.exec();
 }

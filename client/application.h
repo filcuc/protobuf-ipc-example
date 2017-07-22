@@ -6,35 +6,34 @@
 class QString;
 
 namespace protobuf_client_example {
+class Socket;
+namespace protocol { class Message; }
 
-  namespace protocol { class Message; }
-
-  class Application : public QObject
-  {
+/// This is the whole application controller
+class Application : public QObject
+{
     Q_OBJECT
 
-  public:
+public:
+    /// Constructor
     Application();
 
-    void start(const QString &url, int port);
+    /// Connect to the given host and port
+    void connectToHost(const QString &url, int port);
 
-  private slots:
-    void onSslErrors(const QList<QSslError> &errors);
+private:
+    /// Called on Ssl errors
+    bool onSslError(const QSslError &error);
 
-  private:
-    void displayCertificateInformations(const QSslCertificate &certificate);
-    void displayCertificateIssuerInformations(const QSslCertificate &certificate);
-
+    /// Called on socket connected
     void onConnected();
-    void onDisconnected();
-    void onReadyRead();
-    void send(const protocol::Message &message);
-    void onMessageReceived(const protocol::Message &message);
 
-    int m_port;
-    QString m_hostname;
-    QSslSocket m_socket;
-    QByteArray m_recvBuffer;
-    std::vector<char> m_sendBuffer;
-  };
+    /// Called on message received
+    void onMessageReceived(const protobuf_client_example::protocol::Message &message);
+
+    /// Called on socket disconnected
+    void onDisconnected(QAbstractSocket::SocketError error, const QString &errorString);
+
+    Socket* m_socket;
+};
 } // ns protobuf_client_example
