@@ -58,7 +58,7 @@ pub struct Client {
 impl Client {
     pub fn new(stream: native_tls::TlsStream<net::TcpStream>) -> Client {
         Client {
-            stream: stream,
+            stream,
             buffer: [0; 512]
         }
     }
@@ -119,7 +119,7 @@ impl Client {
         }
     }
 
-    fn on_get_events_request(&mut self, request: &GetEventRequest) -> Result<(), Error> {
+    fn on_get_events_request(&mut self, _request: &GetEventRequest) -> Result<(), Error> {
         let mut reply = Message::new();
         reply.set_field_type(Message_Type::GET_EVENTS_REPLY);
         reply.set_getEventReply(GetEventReply::new());
